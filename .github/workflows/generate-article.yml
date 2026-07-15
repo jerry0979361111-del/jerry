@@ -1,0 +1,40 @@
+name: 生成文章並上架到 WordPress 草稿
+
+# 到 GitHub 網頁的 Actions 分頁，手動點「Run workflow」輸入主題即可執行。
+# 不需要你自己的電腦開機——GitHub 的雲端環境會幫你跑。
+on:
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "文章主題（例：2026 年 SEO 趨勢）"
+        required: true
+        type: string
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 取得程式碼
+        uses: actions/checkout@v4
+
+      - name: 安裝 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安裝套件
+        run: pip install -r requirements.txt
+
+      - name: 生成文章並發佈
+        env:
+          # 下列值來自 repo 的 Settings → Secrets and variables → Actions
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+          WP_USERNAME: ${{ secrets.WP_USERNAME }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          # 下列為選填，沒設定就用程式預設值
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          ENABLE_WEB_SEARCH: ${{ vars.ENABLE_WEB_SEARCH }}
+          WP_POST_STATUS: ${{ vars.WP_POST_STATUS }}
+          ARTICLE_LANGUAGE: ${{ vars.ARTICLE_LANGUAGE }}
+        run: python main.py "${{ inputs.topic }}"

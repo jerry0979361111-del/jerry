@@ -55,6 +55,34 @@ python main.py
 
 跑完會印出文章 ID 與後台編輯連結，到 WordPress 後台的「文章 → 草稿」即可看到並審核。
 
+---
+
+## 不想開電腦？用 GitHub Actions 在雲端跑（推薦）
+
+程式碼放在 GitHub 後，可以直接用 GitHub 的雲端環境執行，**不需要自己的電腦開機**、免費。
+
+### 一次性設定：把金鑰存進 GitHub
+
+到你的 GitHub repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**，新增下列 4 個 secret：
+
+| 名稱 | 值 |
+|---|---|
+| `ANTHROPIC_API_KEY` | 你的 Claude 金鑰 |
+| `WP_BASE_URL` | 你的網站網址，例：`https://example.com` |
+| `WP_USERNAME` | WordPress 使用者名稱 |
+| `WP_APP_PASSWORD` | WordPress 應用程式密碼 |
+
+（選填）想改模型或發佈狀態，可在同頁的 **Variables** 分頁新增 `CLAUDE_MODEL`、`WP_POST_STATUS`、`ENABLE_WEB_SEARCH`、`ARTICLE_LANGUAGE`。
+
+### 每次要寫文章時
+
+1. 到 repo 上方的 **Actions** 分頁
+2. 左側點 **「生成文章並上架到 WordPress 草稿」**
+3. 右側點 **「Run workflow」**，輸入主題 → 執行
+4. 約 2–3 分鐘後，到 WordPress 後台「文章 → 草稿」查看
+
+> Secret 一旦存入就無法再讀出（只能覆寫），金鑰不會外洩、也不會出現在執行紀錄裡。
+
 ## 設定選項（.env）
 
 | 變數 | 預設 | 說明 |
