@@ -1,8 +1,4 @@
-"""用 Claude 生成同時符合 SEO / GEO / AIO 的文章。
-
-回傳一個 dict：
-    title, slug, meta_description, content_html, tags, internal_link_suggestions
-"""
+"""用 Claude 生成同時符合 SEO / GEO / AIO 的文章，並從媒體庫挑選圖片。"""
 import json
 from typing import Any
 
@@ -12,38 +8,54 @@ import config
 
 client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
 
-# web search 是伺服器端工具，Claude 會自己決定何時搜尋、抓最新事實
 _WEB_SEARCH_TOOL = {"type": "web_search_20260209", "name": "web_search", "max_uses": 5}
 
 _SYSTEM_PROMPT = """你是資深內容策略師，同時精通三種優化：
 
-- SEO（傳統搜尋引擎 / Google 藍色連結）：主關鍵字自然出現在標題、首段與部分 H2；
-  涵蓋語意相關詞；段落好讀；提供內鏈建議。
-- GEO（生成式引擎最佳化 / ChatGPT、Perplexity、Google AI Overviews 引用你）：
-  開頭放一句可被 AI 直接引用的「結論句」；每個 H2 底下第一段給清楚、可摘要的事實陳述；
-  盡量引用具體數據與可信來源。
-- AIO（AI Overviews 問答最佳化）：文末提供 3–5 題 FAQ，問題用使用者實際會問的口吻。
+- SEO（Google）：選定一個明確的「焦點關鍵字」，讓它自然出現在 H1 標題、第一句話、
+  meta description、以及全文多次（約每 100–150 字出現一次，但不堆砌）。
+- GEO（讓 ChatGPT / Perplexity / Google AI Overviews 引用你）：開頭放一句可被 AI 直接
+  引用的結論句；每個 H2 底下第一段給清楚、可摘要的事實陳述；引用具體數據與可信來源。
+- AIO（AI Overviews 問答優化）：文末提供 3–5 題 FAQ，用使用者真正會問的口吻。
 
-寫作原則：內容真實正確、不杜撰數據；若需最新資訊就使用 web_search 查證。"""
+品質底線：內容真實正確、不杜撰數據；需要最新資訊就用 web_search 查證。"""
 
-_TASK_TEMPLATE = """請針對主題「{topic}」，用「{language}」撰寫一篇完整文章。
+_TASK_TEMPLATE = """請針對主題「{topic}」，用「{language}」撰寫一篇**完整、有深度**的文章。
 
-需要時先用 web_search 查最新、可靠的資料再動筆。
+需要時先用 web_search 查最新可靠資料再動筆。
 
-完成後，**只輸出一個 JSON 物件**（不要有任何其他文字、不要用 markdown 程式碼框包住），格式如下：
+**硬性要求（務必做到，否則 SEO 分數會很低）：**
+1. 內文長度**至少 800 個中文字**（不含 HTML 標籤），越充實越好。
+2. 先決定一個明確的「焦點關鍵字」（focus_keyword），2–4 個字最理想。
+3. 焦點關鍵字必須出現在：H1 標題、內文第一句、meta description、以及全文自然出現多次。
+4. 內文用 **4–6 個 <h2> 段落**，每個 <h2> 下至少 2 段文字；適當時用 <ul>/<ol> 條列。
+5. 文末用 <h2>常見問題</h2> 帶 3–5 組 <h3>問題</h3><p>回答</p>。
+
+完成後，**只輸出一個 JSON 物件**（不要有任何其他文字、不要用程式碼框包住）：
 
 {{
-  "title": "H1 主標題，含主關鍵字，吸引點擊",
+  "focus_keyword": "焦點關鍵字（2–4 字）",
+  "title": "H1 主標題，必須包含焦點關鍵字，吸引點擊，60 字內",
   "slug": "url-friendly-english-slug",
-  "meta_description": "meta description，150 字內，含主關鍵字並帶行動誘因",
-  "content_html": "文章 HTML 內文：用 <h2>/<h3> 分段，首段放可被 AI 引用的結論句，結尾用 <h2>常見問題</h2> 帶 3–5 組 <h3>問題</h3><p>回答</p>。不要包含 <h1>（標題另外給）。",
-  "tags": ["標籤1", "標籤2", "標籤3"],
-  "internal_link_suggestions": ["建議內鏈的錨點文字或相關主題1", "..."]
+  "meta_description": "meta description，150 字內，開頭就含焦點關鍵字並帶行動誘因",
+  "content_html": "文章 HTML 內文（至少 800 字）：首段第一句含焦點關鍵字且為可被 AI 引用的結論句；用 <h2>/<h3> 分段；結尾含 FAQ。不要包含 <h1>。",
+  "image_query": "用來在媒體庫搜尋配圖的 2–3 個關鍵詞，逗號分隔",
+  "tags": ["標籤1", "標籤2", "標籤3"]
 }}"""
+
+_IMAGE_PICK_PROMPT = """文章主題：「{topic}」
+
+以下是網站媒體庫的圖片清單（JSON）。請挑出最適合當這篇文章「精選圖」的一張，
+以及最多 2 張適合插入內文的圖。只能從清單裡挑，若沒有任何相關的就回傳 null / 空陣列。
+
+媒體清單：
+{candidates}
+
+**只輸出 JSON**：
+{{"featured_media_id": 數字或 null, "inline_media_ids": [數字, ...]}}"""
 
 
 def _extract_json(text: str) -> dict[str, Any]:
-    """從模型輸出中抓出 JSON 物件（容錯：可能前後有雜訊或程式碼框）。"""
     start = text.find("{")
     end = text.rfind("}")
     if start == -1 or end == -1 or end <= start:
@@ -51,9 +63,26 @@ def _extract_json(text: str) -> dict[str, Any]:
     return json.loads(text[start : end + 1])
 
 
+def _run_loop(messages: list[dict], tools: list, max_tokens: int) -> str:
+    """執行 agentic loop（處理 web search 的 pause_turn），回傳最後的文字。"""
+    for _ in range(12):
+        resp = client.messages.create(
+            model=config.CLAUDE_MODEL,
+            max_tokens=max_tokens,
+            system=_SYSTEM_PROMPT,
+            tools=tools,
+            messages=messages,
+        )
+        if resp.stop_reason == "pause_turn":
+            messages.append({"role": "assistant", "content": resp.content})
+            continue
+        return "".join(b.text for b in resp.content if b.type == "text")
+    raise RuntimeError("生成迴圈超過上限仍未完成，請重試或縮小主題範圍。")
+
+
 def generate_article(topic: str) -> dict[str, Any]:
     tools = [_WEB_SEARCH_TOOL] if config.ENABLE_WEB_SEARCH else []
-    messages: list[dict[str, Any]] = [
+    messages = [
         {
             "role": "user",
             "content": _TASK_TEMPLATE.format(
@@ -61,24 +90,41 @@ def generate_article(topic: str) -> dict[str, Any]:
             ),
         }
     ]
+    return _extract_json(_run_loop(messages, tools, max_tokens=16000))
 
-    # 手動 agentic loop：讓 Claude 反覆用 web_search，直到寫完
-    for _ in range(12):  # 上限保護，避免無限迴圈
-        resp = client.messages.create(
-            model=config.CLAUDE_MODEL,
-            max_tokens=8000,
-            system=_SYSTEM_PROMPT,
-            tools=tools,
-            messages=messages,
-        )
 
-        # 伺服器端工具（web search）跑到內部上限時會 pause_turn，直接續跑
-        if resp.stop_reason == "pause_turn":
-            messages.append({"role": "assistant", "content": resp.content})
-            continue
-
-        # end_turn：把最後的文字組起來，解析 JSON
-        text = "".join(b.text for b in resp.content if b.type == "text")
-        return _extract_json(text)
-
-    raise RuntimeError("生成迴圈超過上限仍未完成，請重試或縮小主題範圍。")
+def choose_images(topic: str, candidates: list[dict]) -> dict[str, Any]:
+    """讓 Claude 從媒體庫候選圖片中挑出精選圖與內文插圖。"""
+    if not candidates:
+        return {"featured_media_id": None, "inline_media_ids": []}
+    slim = [
+        {
+            "id": c["id"],
+            "title": c.get("title", ""),
+            "alt": c.get("alt", ""),
+            "filename": c.get("filename", ""),
+        }
+        for c in candidates
+    ]
+    resp = client.messages.create(
+        model=config.CLAUDE_MODEL,
+        max_tokens=500,
+        messages=[
+            {
+                "role": "user",
+                "content": _IMAGE_PICK_PROMPT.format(
+                    topic=topic,
+                    candidates=json.dumps(slim, ensure_ascii=False),
+                ),
+            }
+        ],
+    )
+    text = "".join(b.text for b in resp.content if b.type == "text")
+    try:
+        data = _extract_json(text)
+        return {
+            "featured_media_id": data.get("featured_media_id"),
+            "inline_media_ids": data.get("inline_media_ids") or [],
+        }
+    except (ValueError, json.JSONDecodeError):
+        return {"featured_media_id": None, "inline_media_ids": []}

@@ -133,10 +133,40 @@ uvicorn app:app --reload
 | `wordpress.py` | 透過 REST API 發佈到 WordPress |
 | `config.py` | 讀取 `.env` 設定 |
 
+## SEO / GEO / AIO 優化做了什麼
+
+每篇文章生成時會自動：
+
+- **選定焦點關鍵字**，放進 H1 標題、內文第一句、meta description，並在全文自然出現多次
+- **內文至少 800 字**、4–6 個 H2 段落、文末 FAQ（滿足 Rank Math 長度與問答要求）
+- **自動填入 Rank Math 欄位**（焦點關鍵字 / SEO 標題 / Meta 描述）— 需先做下方一次性設定
+- **從你的媒體庫挑相關圖片**當精選圖與內文插圖（只用你網站自己的圖，不用外部圖）
+
+### 一次性設定：讓程式能自動填 Rank Math 欄位
+
+Rank Math 的 SEO 欄位預設不開放 API 寫入，需在你的網站註冊一次。**最簡單的方式**是裝免費外掛 **Code Snippets**（外掛 → 安裝外掛 → 搜尋「Code Snippets」→ 安裝並啟用），然後新增一個 snippet，貼上：
+
+```php
+add_action('init', function () {
+    foreach (['rank_math_focus_keyword', 'rank_math_title', 'rank_math_description'] as $key) {
+        register_post_meta('post', $key, [
+            'type' => 'string',
+            'single' => true,
+            'show_in_rest' => true,
+            'auth_callback' => function () { return current_user_can('edit_posts'); },
+        ]);
+    }
+}, 99);
+```
+
+存檔並啟用（Active）即可。之後生成的文章就會自動帶入焦點關鍵字與 SEO 標題／描述。
+
+> 沒做這步也能用——文章一樣寫得很完整，只是你打開草稿時要自己在 Rank Math 手動填一次焦點關鍵字（程式選的關鍵字也會放在文章標籤裡供參考）。
+
 ## 常見問題
 
-**meta description 有進到 Yoast / RankMath 嗎？**
-目前 meta description 會寫進 WordPress 的「摘要（excerpt）」欄位。若你用 Yoast 或 RankMath 並想同步它們專屬的 meta 欄位，需要額外對接該外掛的欄位（可再擴充，跟我說一聲）。
+**媒體庫找不到相關圖片會怎樣？**
+會略過配圖、照常發文。想提高命中率，請幫媒體庫的圖片加上有意義的**標題 / 替代文字（alt）**，程式才找得到相關圖。
 
 **之後想接 SignalSurf 自動選題？**
 目前是手動輸入主題。之後可把 `generator + wordpress` 包成一個 webhook 端點，由 SignalSurf 的訊號自動觸發（需要它的 webhook 文件）。

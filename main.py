@@ -7,8 +7,7 @@
 import sys
 
 import config
-import generator
-import wordpress
+import pipeline
 
 
 def main() -> None:
@@ -22,18 +21,15 @@ def main() -> None:
 
     print(f"\n🧠 正在用 {config.CLAUDE_MODEL} 生成文章：「{topic}」")
     if config.ENABLE_WEB_SEARCH:
-        print("   （已開啟 web search，會查最新資料，過程約需 1–3 分鐘）")
-    article = generator.generate_article(topic)
-    print(f"✅ 生成完成：{article['title']}")
+        print("   （已開啟 web search，會查最新資料 + 配圖，過程約需 2–3 分鐘）")
 
-    print(f"\n📤 正在發佈到 WordPress（狀態：{config.WP_POST_STATUS}）…")
-    post = wordpress.publish_draft(article)
+    result = pipeline.create_draft(topic)
 
-    edit_url = f"{config.WP_BASE_URL}/wp-admin/post.php?post={post['id']}&action=edit"
-    print("✅ 已上架！")
-    print(f"   文章 ID：{post['id']}")
-    print(f"   狀態　：{post.get('status')}")
-    print(f"   編輯連結：{edit_url}")
+    print("✅ 已上架到草稿夾！")
+    print(f"   標題　　：{result['title']}")
+    print(f"   焦點關鍵字：{result['focus_keyword']}")
+    print(f"   配圖　　：{'已加入' if result['image_used'] else '媒體庫中無相關圖片，略過'}")
+    print(f"   編輯連結：{result['edit_url']}")
 
 
 if __name__ == "__main__":

@@ -11,9 +11,7 @@ from html import escape
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-import config
-import generator
-import wordpress
+import pipeline
 
 APP_PASSWORD = os.getenv("APP_PASSWORD", "").strip()
 
@@ -78,12 +76,11 @@ def home(error: str = ""):
 
 def _run_job(job_id: str, topic: str) -> None:
     try:
-        article = generator.generate_article(topic)
-        post = wordpress.publish_draft(article)
+        result = pipeline.create_draft(topic)
         JOBS[job_id].update(
             status="done",
-            title=article["title"],
-            edit_url=f"{config.WP_BASE_URL}/wp-admin/post.php?post={post['id']}&action=edit",
+            title=result["title"],
+            edit_url=result["edit_url"],
         )
     except Exception as exc:  # noqa: BLE001 — 背景任務統一收斂錯誤
         JOBS[job_id].update(status="error", error=str(exc))
