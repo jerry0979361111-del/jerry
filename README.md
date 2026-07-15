@@ -123,6 +123,8 @@ uvicorn app:app --reload
 | `ENABLE_WEB_SEARCH` | `1` | `1` 開啟 web search 抓最新資料；`0` 關閉（更快、更省） |
 | `WP_POST_STATUS` | `draft` | `draft` 草稿 / `pending` 待審 / `publish` 直接上架 |
 | `ARTICLE_LANGUAGE` | `繁體中文` | 文章語言 |
+| `REFERENCE_QUERY` | `移民` | 用這個關鍵字撈站上已發佈文章當結構/風格範本；留空則參考最新文章 |
+| `REFERENCE_COUNT` | `2` | 參考幾篇既有文章；設 `0` 完全關閉 |
 
 ## 檔案結構
 

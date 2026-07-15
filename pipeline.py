@@ -48,7 +48,11 @@ def _insert_inline_images(html: str, images: list[dict[str, str]]) -> str:
 
 def create_draft(topic: str) -> dict[str, Any]:
     """回傳 {post_id, title, edit_url, focus_keyword, image_used}。"""
-    article = generator.generate_article(topic)
+    # 抓站上既有文章當結構/風格範本（例如移民文章）
+    references = wordpress.list_reference_posts(
+        config.REFERENCE_QUERY, config.REFERENCE_COUNT
+    )
+    article = generator.generate_article(topic, references=references)
 
     # 從媒體庫挑圖（只用網站自己的圖）
     candidates = wordpress.list_media()

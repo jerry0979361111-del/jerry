@@ -48,6 +48,37 @@ def list_media(per_page: int = 60) -> list[dict[str, Any]]:
     return result
 
 
+def list_reference_posts(query: str, count: int) -> list[dict[str, Any]]:
+    """抓站上已發佈的文章當風格/結構範本（可用關鍵字篩選，如「移民」）。"""
+    if count <= 0:
+        return []
+    params: dict[str, Any] = {
+        "status": "publish",
+        "per_page": count,
+        "orderby": "date",
+        "order": "desc",
+        "_fields": "title,content,link",
+    }
+    if query:
+        params["search"] = query
+    try:
+        resp = requests.get(f"{_API}/posts", headers=_HEADERS, params=params, timeout=30)
+        if not resp.ok:
+            return []
+        items = resp.json()
+    except (requests.RequestException, ValueError):
+        return []
+
+    return [
+        {
+            "title": (p.get("title") or {}).get("rendered", ""),
+            "content_html": (p.get("content") or {}).get("rendered", ""),
+            "link": p.get("link", ""),
+        }
+        for p in items
+    ]
+
+
 def _resolve_tag_ids(tag_names: list[str]) -> list[int]:
     ids: list[int] = []
     endpoint = f"{_API}/tags"

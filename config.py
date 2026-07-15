@@ -38,3 +38,7 @@ WP_POST_STATUS = _optional("WP_POST_STATUS", "draft")
 
 # ── 文章 ────────────────────────────────────────────────
 ARTICLE_LANGUAGE = _optional("ARTICLE_LANGUAGE", "繁體中文")
+
+# 參考既有文章的結構/風格：用關鍵字篩選站上已發佈文章當範本
+REFERENCE_QUERY = _optional("REFERENCE_QUERY", "移民")
+REFERENCE_COUNT = int(_optional("REFERENCE_COUNT", "2"))

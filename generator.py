@@ -1,5 +1,6 @@
 """用 Claude 生成同時符合 SEO / GEO / AIO 的文章，並從媒體庫挑選圖片。"""
 import json
+import re
 from typing import Any
 
 import anthropic
@@ -63,6 +64,29 @@ def _extract_json(text: str) -> dict[str, Any]:
     return json.loads(text[start : end + 1])
 
 
+def _strip_tags(html: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)).strip()
+
+
+def _summarize_reference(post: dict[str, Any]) -> str:
+    """把一篇範本文章濃縮成「結構骨架 + 開頭語氣」，讓 AI 參考而非抄襲。"""
+    html = post.get("content_html", "")
+    headings = re.findall(r"<h[23][^>]*>(.*?)</h[23]>", html, flags=re.I | re.S)
+    outline = "\n".join(f"  - {_strip_tags(h)}" for h in headings[:12]) or "  （無明顯小標）"
+    intro = _strip_tags(html)[:220]
+    return f"標題：{_strip_tags(post.get('title', ''))}\n段落結構：\n{outline}\n開頭語氣：{intro}…"
+
+
+def _reference_block(references: list[dict[str, Any]] | None) -> str:
+    if not references:
+        return ""
+    blocks = "\n\n".join(_summarize_reference(p) for p in references)
+    return (
+        "\n\n【本站既有文章範例】請**沿用相似的段落結構、小標命名風格、語氣與深度**，"
+        "但內容要針對本次主題全新撰寫，不可抄襲或改寫既有文章：\n\n" + blocks
+    )
+
+
 def _run_loop(messages: list[dict], tools: list, max_tokens: int) -> str:
     """執行 agentic loop（處理 web search 的 pause_turn），回傳最後的文字。"""
     for _ in range(12):
@@ -80,16 +104,14 @@ def _run_loop(messages: list[dict], tools: list, max_tokens: int) -> str:
     raise RuntimeError("生成迴圈超過上限仍未完成，請重試或縮小主題範圍。")
 
 
-def generate_article(topic: str) -> dict[str, Any]:
+def generate_article(
+    topic: str, references: list[dict[str, Any]] | None = None
+) -> dict[str, Any]:
     tools = [_WEB_SEARCH_TOOL] if config.ENABLE_WEB_SEARCH else []
-    messages = [
-        {
-            "role": "user",
-            "content": _TASK_TEMPLATE.format(
-                topic=topic, language=config.ARTICLE_LANGUAGE
-            ),
-        }
-    ]
+    prompt = _TASK_TEMPLATE.format(
+        topic=topic, language=config.ARTICLE_LANGUAGE
+    ) + _reference_block(references)
+    messages = [{"role": "user", "content": prompt}]
     return _extract_json(_run_loop(messages, tools, max_tokens=16000))
 
 
