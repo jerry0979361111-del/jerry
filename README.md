@@ -83,6 +83,38 @@ python main.py
 
 > Secret 一旦存入就無法再讀出（只能覆寫），金鑰不會外洩、也不會出現在執行紀錄裡。
 
+## 給員工用的網頁版（不需 GitHub 帳號）
+
+`app.py` 是一個網頁服務：員工打開網址、輸入主題與**存取密碼**、按送出，就會生成文章並存到 WordPress 草稿。適合團隊使用——員工完全不用碰你的 GitHub。
+
+本機測試：
+
+```bash
+pip install -r requirements.txt
+# .env 需額外設一個 APP_PASSWORD（員工要輸入的通行碼）
+uvicorn app:app --reload
+# 打開 http://127.0.0.1:8000
+```
+
+### 部署到 Render.com（免費、永遠在線）
+
+1. 到 <https://render.com> 用 GitHub 註冊登入
+2. 點 **New → Blueprint**，選這個 repo（它會讀取 `render.yaml`）
+3. Render 會要你填下列環境變數（不會寫進程式碼）：
+
+   | 變數 | 值 |
+   |---|---|
+   | `APP_PASSWORD` | 你自訂一組給員工輸入的通行碼 |
+   | `ANTHROPIC_API_KEY` | Claude 金鑰 |
+   | `WP_BASE_URL` | `https://www.mejia.au` |
+   | `WP_USERNAME` | WordPress 使用者名稱 |
+   | `WP_APP_PASSWORD` | WordPress 應用程式密碼 |
+
+4. 部署完成後會得到一個網址（如 `https://ai-article-writer.onrender.com`）
+5. 把**網址**與**存取密碼**發給員工即可，他們開網址就能用
+
+> 免費方案閒置一段時間會休眠，第一位使用者開啟時需多等約 30 秒喚醒，屬正常。
+
 ## 設定選項（.env）
 
 | 變數 | 預設 | 說明 |

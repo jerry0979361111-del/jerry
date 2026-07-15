@@ -1,0 +1,22 @@
+# Render.com 部署藍圖：在 Render 上點「New → Blueprint」選這個 repo 即可。
+# 標記 sync:false 的環境變數會在 Render 後台由你手動填寫（不會寫進程式碼、不外洩）。
+services:
+  - type: web
+    name: ai-article-writer
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: APP_PASSWORD          # 員工要輸入的存取密碼，自己設一組
+        sync: false
+      - key: ANTHROPIC_API_KEY     # Claude 金鑰
+        sync: false
+      - key: WP_BASE_URL           # https://www.mejia.au
+        sync: false
+      - key: WP_USERNAME           # WordPress 使用者名稱
+        sync: false
+      - key: WP_APP_PASSWORD       # WordPress 應用程式密碼
+        sync: false
+      - key: WP_POST_STATUS        # 選填，預設 draft
+        value: draft
