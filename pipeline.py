@@ -10,7 +10,7 @@ import config
 
 
 def _insert_inline_images(html: str, images: list[dict[str, str]]) -> str:
-    """把內文插圖插在第 2 個（含）之後的每個 <h2> 之前；沒有 <h2> 就附加在最後。"""
+    """把圖片依序插在每個 <h2> 之前（第 1 張在第一個 <h2> 前＝介於前言與首段之間）。"""
     if not images:
         return html
 
@@ -22,17 +22,11 @@ def _insert_inline_images(html: str, images: list[dict[str, str]]) -> str:
 
     parts: list[str] = []
     rest = html
-    h2_seen = 0
     fig_i = 0
     while fig_i < len(figures):
         pos = rest.find("<h2")
         if pos == -1:
             break
-        h2_seen += 1
-        if h2_seen == 1:  # 跳過第一個 h2，避免圖片緊貼開頭
-            parts.append(rest[: pos + 3])
-            rest = rest[pos + 3 :]
-            continue
         parts.append(rest[:pos])          # h2 之前的內容
         parts.append(figures[fig_i])      # 插入圖片
         fig_i += 1
@@ -71,15 +65,30 @@ def create_draft(topic: str) -> dict[str, Any]:
     picks = generator.choose_images(topic, candidates)
     by_id = {c["id"]: c for c in candidates}
 
-    # 內文插圖的 alt 帶入焦點關鍵字（清掉 Rank Math「圖片 alt 未含關鍵字」）
+    # 決定主圖（hero）：AI 精選 → AI 第一張插圖 →（可關閉的保底）最相關的候選圖
+    hero_id = picks["featured_media_id"] if picks["featured_media_id"] in by_id else None
+    if hero_id is None:
+        hero_id = next((m for m in picks["inline_media_ids"] if m in by_id), None)
+    if hero_id is None and config.IMAGE_FALLBACK and candidates:
+        hero_id = candidates[0]["id"]  # 候選已依焦點關鍵字排序，取最相關的一張
+
+    # 內文插圖 = hero + AI 額外挑的插圖（去重、最多 2 張），alt 帶入焦點關鍵字
+    inline_ids: list[int] = []
+    if hero_id:
+        inline_ids.append(hero_id)
+    for mid in picks["inline_media_ids"]:
+        if mid in by_id and mid not in inline_ids:
+            inline_ids.append(mid)
+    inline_ids = inline_ids[:2]
+
     inline_imgs = [
         {"source_url": by_id[mid]["source_url"], "alt": focus or by_id[mid]["alt"] or article["title"]}
-        for mid in picks["inline_media_ids"]
-        if mid in by_id and by_id[mid]["source_url"]
+        for mid in inline_ids
+        if by_id[mid]["source_url"]
     ]
     article["content_html"] = _insert_inline_images(article["content_html"], inline_imgs)
 
-    featured_id = picks["featured_media_id"] if picks["featured_media_id"] in by_id else None
+    featured_id = hero_id
     post = wordpress.publish_draft(article, featured_media_id=featured_id)
 
     return {

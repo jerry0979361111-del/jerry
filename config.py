@@ -42,3 +42,6 @@ ARTICLE_LANGUAGE = _optional("ARTICLE_LANGUAGE", "繁體中文")
 # 參考既有文章的結構/風格：用關鍵字篩選站上已發佈文章當範本
 REFERENCE_QUERY = _optional("REFERENCE_QUERY", "移民")
 REFERENCE_COUNT = int(_optional("REFERENCE_COUNT", "2"))
+
+# 保底配圖：AI 找不到夠相關的圖時，仍用媒體庫最接近的一張（1=開 0=關）
+IMAGE_FALLBACK = _optional("IMAGE_FALLBACK", "1") == "1"
