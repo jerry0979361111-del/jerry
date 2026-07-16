@@ -4,6 +4,7 @@
     python main.py "你的文章主題"
     python main.py                # 不帶參數會互動式詢問主題
 """
+import os
 import sys
 
 import config
@@ -19,11 +20,19 @@ def main() -> None:
     if not topic:
         raise SystemExit("主題不可為空。")
 
+    # 風格與受眾：由環境變數帶入（GitHub Actions 會從表單填入）
+    style = os.getenv("ARTICLE_STYLE", "").strip()
+    audience = os.getenv("TARGET_AUDIENCE", "").strip()
+
     print(f"\n🧠 正在用 {config.CLAUDE_MODEL} 生成文章：「{topic}」")
+    if style:
+        print(f"   風格：{style}")
+    if audience:
+        print(f"   受眾：{audience}")
     if config.ENABLE_WEB_SEARCH:
         print("   （已開啟 web search，會查最新資料 + 配圖，過程約需 2–3 分鐘）")
 
-    result = pipeline.create_draft(topic)
+    result = pipeline.create_draft(topic, style=style, audience=audience)
 
     print("✅ 已上架到草稿夾！")
     print(f"   標題　　　：{result['title']}")

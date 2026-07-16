@@ -40,7 +40,7 @@ def _insert_inline_images(html: str, images: list[dict[str, str]]) -> str:
     return result
 
 
-def create_draft(topic: str) -> dict[str, Any]:
+def create_draft(topic: str, style: str = "", audience: str = "") -> dict[str, Any]:
     """回傳 {post_id, title, edit_url, focus_keyword, image_used}。"""
     # 抓站上既有文章當結構/風格範本（例如移民文章）
     references = wordpress.list_reference_posts(
@@ -48,7 +48,11 @@ def create_draft(topic: str) -> dict[str, Any]:
     )
     internal_links = [r["link"] for r in references if r.get("link")]
     article = generator.generate_article(
-        topic, references=references, internal_links=internal_links
+        topic,
+        references=references,
+        internal_links=internal_links,
+        style=style,
+        audience=audience,
     )
 
     focus = (article.get("focus_keyword") or "").strip()

@@ -9,6 +9,21 @@ on:
         description: "文章主題（例：2026 年 SEO 趨勢）"
         required: true
         type: string
+      style:
+        description: "文章風格"
+        required: false
+        type: choice
+        default: "專業正式"
+        options:
+          - "專業正式"
+          - "親切口語"
+          - "實用教學"
+          - "深度分析"
+          - "新聞報導"
+      audience:
+        description: "主要受眾（例：首次申請澳洲簽證的新手）"
+        required: false
+        type: string
 
 jobs:
   generate:
@@ -37,4 +52,7 @@ jobs:
           ENABLE_WEB_SEARCH: ${{ vars.ENABLE_WEB_SEARCH }}
           WP_POST_STATUS: ${{ vars.WP_POST_STATUS }}
           ARTICLE_LANGUAGE: ${{ vars.ARTICLE_LANGUAGE }}
+          # 本次執行的風格與受眾（來自上方表單）
+          ARTICLE_STYLE: ${{ inputs.style }}
+          TARGET_AUDIENCE: ${{ inputs.audience }}
         run: python main.py "${{ inputs.topic }}"

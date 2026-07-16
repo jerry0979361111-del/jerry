@@ -21,7 +21,7 @@ _SYSTEM_PROMPT = """你是資深內容策略師，同時精通三種優化：
 
 品質底線：內容真實正確、不杜撰數據；需要最新資訊就用 web_search 查證。"""
 
-_TASK_TEMPLATE = """請針對主題「{topic}」，用「{language}」撰寫一篇**完整、有深度**的文章。
+_TASK_TEMPLATE = """請針對主題「{topic}」，用「{language}」撰寫一篇**完整、有深度**的文章。{style_audience}
 
 需要時先用 web_search 查最新可靠資料再動筆。
 
@@ -90,6 +90,20 @@ def _reference_block(references: list[dict[str, Any]] | None) -> str:
     )
 
 
+def _style_audience_note(style: str, audience: str) -> str:
+    lines = []
+    if style and style.strip():
+        lines.append(f"- 文章風格：{style.strip()}")
+    if audience and audience.strip():
+        lines.append(
+            f"- 主要受眾：{audience.strip()}"
+            "（請針對他們的知識程度與關注點，調整用詞、舉例與深淺）"
+        )
+    if not lines:
+        return ""
+    return "\n\n【寫作設定】請務必遵守：\n" + "\n".join(lines)
+
+
 def _internal_link_note(links: list[str] | None) -> str:
     links = [ln for ln in (links or []) if ln][:3]
     if not links:
@@ -122,10 +136,16 @@ def generate_article(
     topic: str,
     references: list[dict[str, Any]] | None = None,
     internal_links: list[str] | None = None,
+    style: str = "",
+    audience: str = "",
 ) -> dict[str, Any]:
     tools = [_WEB_SEARCH_TOOL] if config.ENABLE_WEB_SEARCH else []
     prompt = (
-        _TASK_TEMPLATE.format(topic=topic, language=config.ARTICLE_LANGUAGE)
+        _TASK_TEMPLATE.format(
+            topic=topic,
+            language=config.ARTICLE_LANGUAGE,
+            style_audience=_style_audience_note(style, audience),
+        )
         + _reference_block(references)
         + _internal_link_note(internal_links)
     )

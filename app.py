@@ -66,6 +66,16 @@ def home(error: str = ""):
   <form method="post" action="/generate">
     <label>文章主題</label>
     <input name="topic" placeholder="例：墨爾本必吃美食推薦" required autofocus>
+    <label>文章風格</label>
+    <select name="style">
+      <option value="專業正式">專業正式</option>
+      <option value="親切口語">親切口語</option>
+      <option value="實用教學">實用教學</option>
+      <option value="深度分析">深度分析</option>
+      <option value="新聞報導">新聞報導</option>
+    </select>
+    <label>主要受眾（選填）</label>
+    <input name="audience" placeholder="例：首次申請澳洲簽證的新手">
     <label>存取密碼</label>
     <input name="password" type="password" placeholder="請向管理員索取" required>
     <button type="submit">生成並上架到草稿</button>
@@ -74,9 +84,9 @@ def home(error: str = ""):
 </div>""")
 
 
-def _run_job(job_id: str, topic: str) -> None:
+def _run_job(job_id: str, topic: str, style: str, audience: str) -> None:
     try:
-        result = pipeline.create_draft(topic)
+        result = pipeline.create_draft(topic, style=style, audience=audience)
         JOBS[job_id].update(
             status="done",
             title=result["title"],
@@ -89,7 +99,12 @@ def _run_job(job_id: str, topic: str) -> None:
 
 
 @app.post("/generate")
-def generate(topic: str = Form(...), password: str = Form(...)):
+def generate(
+    topic: str = Form(...),
+    password: str = Form(...),
+    style: str = Form(""),
+    audience: str = Form(""),
+):
     if not APP_PASSWORD:
         return RedirectResponse("/?error=" + escape("伺服器尚未設定 APP_PASSWORD"), 303)
     if password != APP_PASSWORD:
@@ -102,7 +117,9 @@ def generate(topic: str = Form(...), password: str = Form(...)):
     job_id = uuid.uuid4().hex
     JOBS[job_id] = {"status": "running", "topic": topic, "title": None,
                     "edit_url": None, "error": None}
-    threading.Thread(target=_run_job, args=(job_id, topic), daemon=True).start()
+    threading.Thread(
+        target=_run_job, args=(job_id, topic, style.strip(), audience.strip()), daemon=True
+    ).start()
     return RedirectResponse(f"/status/{job_id}", 303)
 
 
