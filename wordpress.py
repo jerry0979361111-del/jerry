@@ -13,21 +13,22 @@ _HEADERS = {"Authorization": _AUTH_HEADER}
 _API = f"{config.WP_BASE_URL}/wp-json/wp/v2"
 
 
-def list_media(per_page: int = 60) -> list[dict[str, Any]]:
-    """列出媒體庫中的圖片（只取需要的欄位），供挑選配圖用。"""
+def list_media(per_page: int = 60, search: str = "") -> list[dict[str, Any]]:
+    """列出媒體庫中的圖片（只取需要的欄位），供挑選配圖用。
+
+    給 search 時會用關鍵字搜尋（比對標題/替代文字/檔名），較容易找到相關圖。
+    """
+    params: dict[str, Any] = {
+        "media_type": "image",
+        "per_page": per_page,
+        "orderby": "date",
+        "order": "desc",
+        "_fields": "id,source_url,alt_text,title,media_details",
+    }
+    if search:
+        params["search"] = search
     try:
-        resp = requests.get(
-            f"{_API}/media",
-            headers=_HEADERS,
-            params={
-                "media_type": "image",
-                "per_page": per_page,
-                "orderby": "date",
-                "order": "desc",
-                "_fields": "id,source_url,alt_text,title,media_details",
-            },
-            timeout=30,
-        )
+        resp = requests.get(f"{_API}/media", headers=_HEADERS, params=params, timeout=30)
         if not resp.ok:
             return []
         items = resp.json()

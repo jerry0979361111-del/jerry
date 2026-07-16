@@ -26,9 +26,18 @@ def main() -> None:
     result = pipeline.create_draft(topic)
 
     print("✅ 已上架到草稿夾！")
-    print(f"   標題　　：{result['title']}")
+    print(f"   標題　　　：{result['title']}")
     print(f"   焦點關鍵字：{result['focus_keyword']}")
-    print(f"   配圖　　：{'已加入' if result['image_used'] else '媒體庫中無相關圖片，略過'}")
+    print(f"   參考文章數：{result['reference_count']} 篇")
+    print(
+        f"   配圖　　　：候選 {result['media_candidates']} 張／"
+        f"精選圖 {'有' if result['featured_set'] else '無'}／"
+        f"內文插圖 {result['inline_count']} 張"
+    )
+    if result["media_candidates"] == 0:
+        print("   ⚠️ 媒體庫沒抓到任何圖片——可能是權限或安全外掛擋住 REST，或媒體庫是空的。")
+    elif not result["image_used"]:
+        print("   ⚠️ 有圖片但沒挑到相關的——建議幫媒體庫圖片補上有意義的標題／替代文字(alt)。")
     print(f"   編輯連結：{result['edit_url']}")
 
 

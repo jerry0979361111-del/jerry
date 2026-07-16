@@ -81,6 +81,8 @@ def _run_job(job_id: str, topic: str) -> None:
             status="done",
             title=result["title"],
             edit_url=result["edit_url"],
+            focus_keyword=result["focus_keyword"],
+            image_used=result["image_used"],
         )
     except Exception as exc:  # noqa: BLE001 — 背景任務統一收斂錯誤
         JOBS[job_id].update(status="error", error=str(exc))
@@ -120,11 +122,14 @@ def status(job_id: str):
 </div>
 <meta http-equiv="refresh" content="5">"""
     elif job["status"] == "done":
+        kw = escape(job.get("focus_keyword", "") or "—")
+        img = "已加入媒體庫圖片" if job.get("image_used") else "媒體庫無相關圖片，未配圖"
         body = f"""
 <h1>✅ 完成！</h1>
 <div class="card">
   <p class="ok">已生成並存到 WordPress 草稿夾</p>
   <p><strong>{escape(job['title'])}</strong></p>
+  <p class="muted">焦點關鍵字：{kw}　·　配圖：{img}</p>
   <a class="btn" href="{escape(job['edit_url'])}" target="_blank">前往 WordPress 編輯／審核</a>
   <p style="margin-top:20px"><a href="/">← 再寫一篇</a></p>
 </div>"""

@@ -54,8 +54,12 @@ def create_draft(topic: str) -> dict[str, Any]:
     )
     article = generator.generate_article(topic, references=references)
 
-    # 從媒體庫挑圖（只用網站自己的圖）
-    candidates = wordpress.list_media()
+    # 從媒體庫挑圖（只用網站自己的圖）：先用焦點關鍵字搜尋，再用最新圖片補齊
+    candidates = wordpress.list_media(per_page=40, search=article.get("focus_keyword", ""))
+    if len(candidates) < 8:
+        seen = {c["id"] for c in candidates}
+        candidates += [m for m in wordpress.list_media(per_page=40) if m["id"] not in seen]
+
     picks = generator.choose_images(topic, candidates)
     by_id = {c["id"]: c for c in candidates}
 
@@ -74,5 +78,9 @@ def create_draft(topic: str) -> dict[str, Any]:
         "title": article["title"],
         "focus_keyword": article.get("focus_keyword", ""),
         "image_used": bool(featured_id or inline_imgs),
+        "media_candidates": len(candidates),
+        "featured_set": bool(featured_id),
+        "inline_count": len(inline_imgs),
+        "reference_count": len(references),
         "edit_url": f"{config.WP_BASE_URL}/wp-admin/post.php?post={post['id']}&action=edit",
     }
