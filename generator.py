@@ -26,11 +26,13 @@ _TASK_TEMPLATE = """請針對主題「{topic}」，用「{language}」撰寫一�
 需要時先用 web_search 查最新可靠資料再動筆。
 
 **硬性要求（務必做到，否則 SEO 分數會很低）：**
-1. 內文長度**至少 800 個中文字**（不含 HTML 標籤），越充實越好。
+1. 內文長度**至少 1500 個中文字**（不含 HTML 標籤），越充實越好。
 2. 先決定一個明確的「焦點關鍵字」（focus_keyword），2–4 個字最理想。
-3. 焦點關鍵字必須出現在：H1 標題、內文第一句、meta description、以及全文自然出現多次。
+3. 焦點關鍵字必須出現在：H1 標題、內文第一句、meta description、以及全文自然出現多次（密度約 1%）。
 4. 內文用 **4–6 個 <h2> 段落**，每個 <h2> 下至少 2 段文字；適當時用 <ul>/<ol> 條列。
-5. 文末用 <h2>常見問題</h2> 帶 3–5 組 <h3>問題</h3><p>回答</p>。
+5. **至少一個 <h2> 或 <h3> 小標要包含焦點關鍵字。**
+6. 內文中自然加入 **1 個指向權威外部網站的超連結**（<a href="..."> 指向政府/官方/權威來源，例如官方移民或統計網站）。
+7. 文末用 <h2>常見問題</h2> 帶 3–5 組 <h3>問題</h3><p>回答</p>。
 
 完成後，**只輸出一個 JSON 物件**（不要有任何其他文字、不要用程式碼框包住）：
 
@@ -87,6 +89,17 @@ def _reference_block(references: list[dict[str, Any]] | None) -> str:
     )
 
 
+def _internal_link_note(links: list[str] | None) -> str:
+    links = [ln for ln in (links or []) if ln][:3]
+    if not links:
+        return ""
+    joined = "\n".join(f"  - {ln}" for ln in links)
+    return (
+        "\n\n【內部連結】請在內文中自然嵌入 **1 個 <a href> 超連結**，指向下列其中一個本站既有文章"
+        "（用相關的錨點文字，不要用「這裡」）：\n" + joined
+    )
+
+
 def _run_loop(messages: list[dict], tools: list, max_tokens: int) -> str:
     """執行 agentic loop（處理 web search 的 pause_turn），回傳最後的文字。"""
     for _ in range(12):
@@ -105,12 +118,16 @@ def _run_loop(messages: list[dict], tools: list, max_tokens: int) -> str:
 
 
 def generate_article(
-    topic: str, references: list[dict[str, Any]] | None = None
+    topic: str,
+    references: list[dict[str, Any]] | None = None,
+    internal_links: list[str] | None = None,
 ) -> dict[str, Any]:
     tools = [_WEB_SEARCH_TOOL] if config.ENABLE_WEB_SEARCH else []
-    prompt = _TASK_TEMPLATE.format(
-        topic=topic, language=config.ARTICLE_LANGUAGE
-    ) + _reference_block(references)
+    prompt = (
+        _TASK_TEMPLATE.format(topic=topic, language=config.ARTICLE_LANGUAGE)
+        + _reference_block(references)
+        + _internal_link_note(internal_links)
+    )
     messages = [{"role": "user", "content": prompt}]
     return _extract_json(_run_loop(messages, tools, max_tokens=16000))
 

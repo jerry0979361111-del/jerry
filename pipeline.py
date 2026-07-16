@@ -52,10 +52,18 @@ def create_draft(topic: str) -> dict[str, Any]:
     references = wordpress.list_reference_posts(
         config.REFERENCE_QUERY, config.REFERENCE_COUNT
     )
-    article = generator.generate_article(topic, references=references)
+    internal_links = [r["link"] for r in references if r.get("link")]
+    article = generator.generate_article(
+        topic, references=references, internal_links=internal_links
+    )
+
+    focus = (article.get("focus_keyword") or "").strip()
+    # 讓網址包含焦點關鍵字（修正 Rank Math「關鍵字未出現在 URL」；中文網址會自動編碼）
+    if focus:
+        article["slug"] = focus
 
     # 從媒體庫挑圖（只用網站自己的圖）：先用焦點關鍵字搜尋，再用最新圖片補齊
-    candidates = wordpress.list_media(per_page=40, search=article.get("focus_keyword", ""))
+    candidates = wordpress.list_media(per_page=40, search=focus)
     if len(candidates) < 8:
         seen = {c["id"] for c in candidates}
         candidates += [m for m in wordpress.list_media(per_page=40) if m["id"] not in seen]
@@ -63,8 +71,9 @@ def create_draft(topic: str) -> dict[str, Any]:
     picks = generator.choose_images(topic, candidates)
     by_id = {c["id"]: c for c in candidates}
 
+    # 內文插圖的 alt 帶入焦點關鍵字（清掉 Rank Math「圖片 alt 未含關鍵字」）
     inline_imgs = [
-        {"source_url": by_id[mid]["source_url"], "alt": by_id[mid]["alt"] or article["title"]}
+        {"source_url": by_id[mid]["source_url"], "alt": focus or by_id[mid]["alt"] or article["title"]}
         for mid in picks["inline_media_ids"]
         if mid in by_id and by_id[mid]["source_url"]
     ]
