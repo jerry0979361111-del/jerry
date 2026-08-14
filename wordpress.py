@@ -140,6 +140,45 @@ def publish_draft(
     return post
 
 
+def get_post(post_id: int) -> dict[str, Any]:
+    """取得單篇文章完整內容（含 meta），用於預覽草稿。"""
+    resp = requests.get(
+        f"{_API}/posts/{post_id}",
+        headers=_HEADERS,
+        params={
+            "context": "edit",
+            "_fields": "id,title,content,excerpt,link,slug,status,featured_media,meta",
+        },
+        timeout=30,
+    )
+    if not resp.ok:
+        raise RuntimeError(f"讀取文章失敗（HTTP {resp.status_code}）：{resp.text[:500]}")
+    return resp.json()
+
+
+def get_media_url(media_id: int | None) -> str:
+    """依 media ID 查詢圖片網址；查無或 media_id 為空則回傳空字串。"""
+    if not media_id:
+        return ""
+    try:
+        resp = requests.get(
+            f"{_API}/media/{media_id}", headers=_HEADERS, params={"_fields": "source_url"}, timeout=30
+        )
+        return resp.json().get("source_url", "") if resp.ok else ""
+    except (requests.RequestException, ValueError):
+        return ""
+
+
+def set_post_status(post_id: int, status: str) -> dict[str, Any]:
+    """更新文章狀態（例如把草稿改成 publish 正式發佈）。"""
+    resp = requests.post(
+        f"{_API}/posts/{post_id}", headers=_HEADERS, json={"status": status}, timeout=30
+    )
+    if not resp.ok:
+        raise RuntimeError(f"更新文章狀態失敗（HTTP {resp.status_code}）：{resp.text[:500]}")
+    return resp.json()
+
+
 def _set_rank_math_meta(
     post_id: int, focus_keyword: str, seo_title: str, seo_description: str
 ) -> bool:

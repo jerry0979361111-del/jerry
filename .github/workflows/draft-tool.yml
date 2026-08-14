@@ -1,0 +1,44 @@
+name: 草稿預覽／發佈工具（供 Claude 呼叫）
+
+# 讓 Claude 可以：
+# - fetch：讀出某篇 WordPress 草稿的完整內容，做成預覽連結給你看
+# - publish：你確認內容沒問題後，把該篇草稿改成正式發佈
+# 一般不需要自己手動跑這個，但也可以到 Actions 分頁手動觸發。
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "要做什麼"
+        required: true
+        type: choice
+        default: "fetch"
+        options:
+          - fetch
+          - publish
+      post_id:
+        description: "WordPress 文章 ID"
+        required: true
+        type: string
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 取得程式碼
+        uses: actions/checkout@v4
+
+      - name: 安裝 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安裝套件
+        run: pip install -r requirements.txt
+
+      - name: 執行
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+          WP_USERNAME: ${{ secrets.WP_USERNAME }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+        run: python draft_tool.py "${{ inputs.action }}" "${{ inputs.post_id }}"
