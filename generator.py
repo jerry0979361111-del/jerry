@@ -115,13 +115,13 @@ def _internal_link_note(links: list[str] | None) -> str:
     )
 
 
-def _run_loop(messages: list[dict], tools: list, max_tokens: int) -> str:
+def _run_loop(messages: list[dict], tools: list, max_tokens: int, system: str = _SYSTEM_PROMPT) -> str:
     """執行 agentic loop（處理 web search 的 pause_turn），回傳最後的文字。"""
     for _ in range(12):
         resp = client.messages.create(
             model=config.CLAUDE_MODEL,
             max_tokens=max_tokens,
-            system=_SYSTEM_PROMPT,
+            system=system,
             tools=tools,
             messages=messages,
         )

@@ -1,0 +1,36 @@
+name: 澳洲房產週報（每週自動生成並上架到 WordPress 草稿）
+
+# 每週一早上（雪梨時間約 07:00-08:00，隨日光節約時間略有偏移）自動執行。
+# 也可以到 Actions 分頁手動點「Run workflow」立即測試。
+on:
+  schedule:
+    - cron: "0 21 * * 0" # UTC 週日 21:00 ≈ 雪梨週一 07:00(AEST)/08:00(AEDT)
+  workflow_dispatch: {}
+
+jobs:
+  generate-digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 取得程式碼
+        uses: actions/checkout@v4
+
+      - name: 安裝 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安裝套件
+        run: pip install -r requirements.txt
+
+      - name: 生成澳洲房產週報並發佈到草稿
+        env:
+          # 下列值來自 repo 的 Settings → Secrets and variables → Actions（與現有文章產生器共用）
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+          WP_USERNAME: ${{ secrets.WP_USERNAME }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          # 下列為選填，沒設定就用程式預設值
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          ENABLE_WEB_SEARCH: ${{ vars.ENABLE_WEB_SEARCH }}
+          WP_POST_STATUS: ${{ vars.WP_POST_STATUS }}
+        run: python run_weekly_digest.py
