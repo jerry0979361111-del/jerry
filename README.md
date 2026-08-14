@@ -83,6 +83,25 @@ python main.py
 
 > Secret 一旦存入就無法再讀出（只能覆寫），金鑰不會外洩、也不會出現在執行紀錄裡。
 
+## 澳洲房產週報（每週自動生成）
+
+`run_weekly_digest.py` + `au_property_digest.py`：每週自動從 realestate.com.au、
+domain.com.au、SQM Research、Cotality（前 CoreLogic）取材，整理成一篇給台灣受眾看的
+**原創**繁體中文週報，涵蓋房產教學、房市新聞、房價租金趨勢、專欄評論、貸款利率、
+財稅法規更新、熱搜話題等分類，優先挑有數據表格/圖表、討論度高的報導，發佈到
+WordPress 草稿供審核。
+
+**這不是翻譯轉貼**：為避免侵權與違反來源網站使用條款，程式的 prompt 明確要求 Claude
+只能原創分析與摘要，單一來源引用有字數上限並附連結回原文，表格/圖表一律依數據自行
+重新製作、不複製原圖，文末會附上「資料來源」清單。詳細規則見 `au_property_digest.py`
+的 `_DIGEST_SYSTEM_PROMPT`。**產出仍是 AI 生成內容，發佈前務必人工審核**（是否誤用他人
+著作、引用是否適當、數字是否正確）。
+
+- 排程：`.github/workflows/weekly-au-property-digest.yml`，預設每週一雪梨時間早上自動執行
+  （可到 workflow 檔案調整 cron 時間），也可到 Actions 分頁手動「Run workflow」測試
+- 本機測試：`python run_weekly_digest.py`
+- 與現有文章產生器共用同一組 `.env` / GitHub Secrets（`ANTHROPIC_API_KEY`、`WP_*`）
+
 ## 給員工用的網頁版（不需 GitHub 帳號）
 
 `app.py` 是一個網頁服務：員工打開網址、輸入主題與**存取密碼**、按送出，就會生成文章並存到 WordPress 草稿。適合團隊使用——員工完全不用碰你的 GitHub。
