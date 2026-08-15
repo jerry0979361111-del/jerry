@@ -18,6 +18,8 @@ on:
           - strip_sources
           - replace_text
           - add_category
+          - remove_category
+          - move_category
           - list_categories
       post_id:
         description: "WordPress 文章 ID"
@@ -32,7 +34,11 @@ on:
         required: false
         type: string
       category_name:
-        description: "分類名稱（僅 add_category 需要，查無則自動建立）"
+        description: "分類名稱（add_category／remove_category／move_category 需要，查無則自動建立）"
+        required: false
+        type: string
+      parent_category_name:
+        description: "上層分類名稱（僅 move_category 需要，查無則自動建立）"
         required: false
         type: string
 
@@ -60,4 +66,5 @@ jobs:
           OLD_TEXT: ${{ inputs.old_text }}
           NEW_TEXT: ${{ inputs.new_text }}
           CATEGORY_NAME: ${{ inputs.category_name }}
+          PARENT_CATEGORY_NAME: ${{ inputs.parent_category_name }}
         run: python draft_tool.py "${{ inputs.action }}" "${{ inputs.post_id }}"

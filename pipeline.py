@@ -130,7 +130,7 @@ def create_weekly_digest_draft() -> dict[str, Any]:
     result = _publish_article(
         article,
         image_query=article.get("image_query", "澳洲 房地產"),
-        category_names=["澳洲房產週報", "澳洲買家指南"],
+        category_names=["澳洲房產週報"],
     )
     result["source_count"] = len(sources)
     return result
