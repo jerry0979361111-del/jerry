@@ -179,6 +179,16 @@ def set_post_status(post_id: int, status: str) -> dict[str, Any]:
     return resp.json()
 
 
+def update_post_content(post_id: int, content_html: str) -> dict[str, Any]:
+    """覆寫文章內文（用於修正既有草稿內容）。"""
+    resp = requests.post(
+        f"{_API}/posts/{post_id}", headers=_HEADERS, json={"content": content_html}, timeout=30
+    )
+    if not resp.ok:
+        raise RuntimeError(f"更新文章內容失敗（HTTP {resp.status_code}）：{resp.text[:500]}")
+    return resp.json()
+
+
 def _set_rank_math_meta(
     post_id: int, focus_keyword: str, seo_title: str, seo_description: str
 ) -> bool:

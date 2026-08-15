@@ -2,10 +2,12 @@
 或在使用者確認後把草稿改成正式發佈。
 
 用法：
-    python draft_tool.py fetch <post_id>     # 印出草稿內容 JSON（供 workflow log 讀取）
-    python draft_tool.py publish <post_id>   # 把該篇文章狀態改成 publish
+    python draft_tool.py fetch <post_id>          # 印出草稿內容 JSON（供 workflow log 讀取）
+    python draft_tool.py publish <post_id>        # 把該篇文章狀態改成 publish
+    python draft_tool.py strip_sources <post_id>  # 移除文末重複的「資料來源」彙總清單
 """
 import json
+import re
 import sys
 
 import wordpress
@@ -42,11 +44,25 @@ def publish(post_id: int) -> None:
     _print_json({"id": post["id"], "status": post.get("status", ""), "link": post.get("link", "")})
 
 
+def strip_sources(post_id: int) -> None:
+    """移除文末重複的「資料來源」彙總清單（每段結尾已個別附上資料來源連結，文末彙總是多餘的）。"""
+    post = wordpress.get_post(post_id)
+    content = (post.get("content") or {}).get("rendered", "")
+    new_content = re.sub(r"<h2>資料來源</h2>\s*<ul>.*?</ul>\s*", "", content, flags=re.S)
+    removed = new_content != content
+    if removed:
+        wordpress.update_post_content(post_id, new_content)
+    _print_json({"id": post_id, "removed": removed, "new_length": len(new_content)})
+
+
+_ACTIONS = {"fetch": fetch, "publish": publish, "strip_sources": strip_sources}
+
+
 def main() -> None:
-    if len(sys.argv) != 3 or sys.argv[1] not in ("fetch", "publish"):
-        raise SystemExit("用法：python draft_tool.py fetch|publish <post_id>")
+    if len(sys.argv) != 3 or sys.argv[1] not in _ACTIONS:
+        raise SystemExit("用法：python draft_tool.py fetch|publish|strip_sources <post_id>")
     action, post_id = sys.argv[1], int(sys.argv[2])
-    (fetch if action == "fetch" else publish)(post_id)
+    _ACTIONS[action](post_id)
 
 
 if __name__ == "__main__":
