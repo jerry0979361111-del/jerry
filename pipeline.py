@@ -2,7 +2,6 @@
 
 main.py（指令列）與 app.py（網頁）都呼叫這裡，避免邏輯重複。
 """
-from html import escape
 from typing import Any
 
 import au_property_digest
@@ -122,16 +121,9 @@ def create_weekly_digest_draft() -> dict[str, Any]:
     """
     article = au_property_digest.generate_weekly_digest()
 
-    # 文末附上本文引用的資料來源清單，連結回原文（合理使用 + 強化 GEO 可信度）
+    # 不額外附加彙總清單：Claude 已在每個段落結尾寫了「資料來源：連結」，
+    # 這裡只取數量做診斷用，避免文末重複列出一次。
     sources = article.pop("sources", None) or []
-    items = "".join(
-        f'<li><a href="{escape(s["url"])}" target="_blank" rel="noopener nofollow">'
-        f'{escape(s.get("site", ""))}｜{escape(s.get("title", ""))}</a></li>'
-        for s in sources
-        if s.get("url")
-    )
-    if items:
-        article["content_html"] = article.get("content_html", "") + f"<h2>資料來源</h2><ul>{items}</ul>"
 
     result = _publish_article(article, image_query=article.get("image_query", "澳洲 房地產"))
     result["source_count"] = len(sources)
