@@ -41,7 +41,9 @@ def _insert_inline_images(html: str, images: list[dict[str, str]]) -> str:
     return result
 
 
-def _publish_article(article: dict[str, Any], image_query: str = "") -> dict[str, Any]:
+def _publish_article(
+    article: dict[str, Any], image_query: str = "", category_name: str = ""
+) -> dict[str, Any]:
     """共用流程：挑圖、插入內文、發佈到 WordPress 草稿。回傳 {post_id, title, edit_url, ...}。"""
     focus = (article.get("focus_keyword") or "").strip()
     # 讓網址包含焦點關鍵字（修正 Rank Math「關鍵字未出現在 URL」；中文網址會自動編碼）
@@ -81,7 +83,7 @@ def _publish_article(article: dict[str, Any], image_query: str = "") -> dict[str
     article["content_html"] = _insert_inline_images(article["content_html"], inline_imgs)
 
     featured_id = hero_id
-    post = wordpress.publish_draft(article, featured_media_id=featured_id)
+    post = wordpress.publish_draft(article, featured_media_id=featured_id, category_name=category_name)
 
     return {
         "post_id": post["id"],
@@ -125,6 +127,10 @@ def create_weekly_digest_draft() -> dict[str, Any]:
     # 這裡只取數量做診斷用，避免文末重複列出一次。
     sources = article.pop("sources", None) or []
 
-    result = _publish_article(article, image_query=article.get("image_query", "澳洲 房地產"))
+    result = _publish_article(
+        article,
+        image_query=article.get("image_query", "澳洲 房地產"),
+        category_name="澳洲房產週報",
+    )
     result["source_count"] = len(sources)
     return result

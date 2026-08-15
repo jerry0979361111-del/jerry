@@ -6,6 +6,7 @@
     python draft_tool.py publish <post_id>        # 把該篇文章狀態改成 publish
     python draft_tool.py strip_sources <post_id>  # 移除文末重複的「資料來源」彙總清單
     python draft_tool.py replace_text <post_id>   # 用環境變數 OLD_TEXT/NEW_TEXT 做一次文字取代
+    python draft_tool.py set_category <post_id>   # 用環境變數 CATEGORY_NAME 設定文章分類（查無則自動建立）
 """
 import json
 import os
@@ -72,17 +73,29 @@ def replace_text(post_id: int) -> None:
     _print_json({"id": post_id, "occurrences_replaced": occurrences, "new_length": len(new_content)})
 
 
+def set_category(post_id: int) -> None:
+    """把文章加到指定分類（查無該分類則自動建立），分類名稱來自 CATEGORY_NAME 環境變數。"""
+    name = os.environ.get("CATEGORY_NAME", "").strip()
+    if not name:
+        raise SystemExit("缺少 CATEGORY_NAME 環境變數。")
+    applied = wordpress.set_post_category(post_id, name)
+    _print_json({"id": post_id, "category": name, "applied": applied})
+
+
 _ACTIONS = {
     "fetch": fetch,
     "publish": publish,
     "strip_sources": strip_sources,
     "replace_text": replace_text,
+    "set_category": set_category,
 }
 
 
 def main() -> None:
     if len(sys.argv) != 3 or sys.argv[1] not in _ACTIONS:
-        raise SystemExit("用法：python draft_tool.py fetch|publish|strip_sources|replace_text <post_id>")
+        raise SystemExit(
+            "用法：python draft_tool.py fetch|publish|strip_sources|replace_text|set_category <post_id>"
+        )
     action, post_id = sys.argv[1], int(sys.argv[2])
     _ACTIONS[action](post_id)
 
