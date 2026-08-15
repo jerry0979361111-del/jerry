@@ -16,9 +16,18 @@ on:
           - fetch
           - publish
           - strip_sources
+          - replace_text
       post_id:
         description: "WordPress 文章 ID"
         required: true
+        type: string
+      old_text:
+        description: "要被取代的原始文字（僅 replace_text 需要）"
+        required: false
+        type: string
+      new_text:
+        description: "取代後的新文字（僅 replace_text 需要）"
+        required: false
         type: string
 
 jobs:
@@ -42,4 +51,6 @@ jobs:
           WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
           WP_USERNAME: ${{ secrets.WP_USERNAME }}
           WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          OLD_TEXT: ${{ inputs.old_text }}
+          NEW_TEXT: ${{ inputs.new_text }}
         run: python draft_tool.py "${{ inputs.action }}" "${{ inputs.post_id }}"

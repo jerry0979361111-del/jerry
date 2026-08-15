@@ -5,8 +5,10 @@
     python draft_tool.py fetch <post_id>          # 印出草稿內容 JSON（供 workflow log 讀取）
     python draft_tool.py publish <post_id>        # 把該篇文章狀態改成 publish
     python draft_tool.py strip_sources <post_id>  # 移除文末重複的「資料來源」彙總清單
+    python draft_tool.py replace_text <post_id>   # 用環境變數 OLD_TEXT/NEW_TEXT 做一次文字取代
 """
 import json
+import os
 import re
 import sys
 
@@ -55,12 +57,32 @@ def strip_sources(post_id: int) -> None:
     _print_json({"id": post_id, "removed": removed, "new_length": len(new_content)})
 
 
-_ACTIONS = {"fetch": fetch, "publish": publish, "strip_sources": strip_sources}
+def replace_text(post_id: int) -> None:
+    """把內文裡的 OLD_TEXT 全部換成 NEW_TEXT（用環境變數傳，避免命令列參數跳脫問題）。"""
+    old = os.environ.get("OLD_TEXT", "")
+    new = os.environ.get("NEW_TEXT", "")
+    if not old:
+        raise SystemExit("缺少 OLD_TEXT 環境變數。")
+    post = wordpress.get_post(post_id)
+    content = (post.get("content") or {}).get("rendered", "")
+    occurrences = content.count(old)
+    new_content = content.replace(old, new)
+    if occurrences:
+        wordpress.update_post_content(post_id, new_content)
+    _print_json({"id": post_id, "occurrences_replaced": occurrences, "new_length": len(new_content)})
+
+
+_ACTIONS = {
+    "fetch": fetch,
+    "publish": publish,
+    "strip_sources": strip_sources,
+    "replace_text": replace_text,
+}
 
 
 def main() -> None:
     if len(sys.argv) != 3 or sys.argv[1] not in _ACTIONS:
-        raise SystemExit("用法：python draft_tool.py fetch|publish|strip_sources <post_id>")
+        raise SystemExit("用法：python draft_tool.py fetch|publish|strip_sources|replace_text <post_id>")
     action, post_id = sys.argv[1], int(sys.argv[2])
     _ACTIONS[action](post_id)
 
