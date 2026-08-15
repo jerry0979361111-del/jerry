@@ -7,6 +7,8 @@
     python draft_tool.py strip_sources <post_id>  # 移除文末重複的「資料來源」彙總清單
     python draft_tool.py replace_text <post_id>      # 用環境變數 OLD_TEXT/NEW_TEXT 做一次文字取代
     python draft_tool.py add_category <post_id>      # 用環境變數 CATEGORY_NAME 把文章加進分類（保留原有分類，查無則自動建立）
+    python draft_tool.py remove_category <post_id>   # 用環境變數 CATEGORY_NAME 把文章從該分類移除（保留其他分類）
+    python draft_tool.py move_category <post_id>     # 用環境變數 CATEGORY_NAME/PARENT_CATEGORY_NAME 把分類移到另一個分類底下，post_id 可帶任意數字
     python draft_tool.py list_categories <post_id>   # 印出網站所有分類（含 parent 階層），post_id 可帶任意數字
 """
 import json
@@ -83,6 +85,25 @@ def add_category(post_id: int) -> None:
     _print_json({"id": post_id, "category": name, **result})
 
 
+def remove_category(post_id: int) -> None:
+    """把文章從指定分類移除（保留其他分類），分類名稱來自 CATEGORY_NAME 環境變數。"""
+    name = os.environ.get("CATEGORY_NAME", "").strip()
+    if not name:
+        raise SystemExit("缺少 CATEGORY_NAME 環境變數。")
+    result = wordpress.remove_post_categories(post_id, [name])
+    _print_json({"id": post_id, "category": name, **result})
+
+
+def move_category(post_id: int) -> None:  # post_id 不使用，僅為保持統一介面
+    """把 CATEGORY_NAME 分類移到 PARENT_CATEGORY_NAME 分類底下（查無則自動建立）。"""
+    name = os.environ.get("CATEGORY_NAME", "").strip()
+    parent_name = os.environ.get("PARENT_CATEGORY_NAME", "").strip()
+    if not name or not parent_name:
+        raise SystemExit("缺少 CATEGORY_NAME 或 PARENT_CATEGORY_NAME 環境變數。")
+    applied = wordpress.move_category(name, parent_name)
+    _print_json({"category": name, "parent": parent_name, "applied": applied})
+
+
 def list_categories(post_id: int) -> None:  # post_id 不使用，僅為保持統一介面
     _print_json({"categories": wordpress.list_categories()})
 
@@ -93,6 +114,8 @@ _ACTIONS = {
     "strip_sources": strip_sources,
     "replace_text": replace_text,
     "add_category": add_category,
+    "remove_category": remove_category,
+    "move_category": move_category,
     "list_categories": list_categories,
 }
 
@@ -100,7 +123,9 @@ _ACTIONS = {
 def main() -> None:
     if len(sys.argv) != 3 or sys.argv[1] not in _ACTIONS:
         raise SystemExit(
-            "用法：python draft_tool.py fetch|publish|strip_sources|replace_text|add_category|list_categories <post_id>"
+            "用法：python draft_tool.py "
+            "fetch|publish|strip_sources|replace_text|add_category|remove_category|move_category|list_categories "
+            "<post_id>"
         )
     action, post_id = sys.argv[1], int(sys.argv[2])
     _ACTIONS[action](post_id)

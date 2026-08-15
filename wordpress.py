@@ -121,20 +121,46 @@ def _resolve_category_ids(category_names: list[str]) -> list[int]:
     return [cid for cid in (_resolve_term_id(endpoint, name) for name in category_names) if cid]
 
 
+def _get_post_category_ids(post_id: int) -> list[int]:
+    resp = requests.get(
+        f"{_API}/posts/{post_id}", headers=_HEADERS, params={"_fields": "categories"}, timeout=30
+    )
+    return resp.json().get("categories", []) if resp.ok else []
+
+
 def add_post_categories(post_id: int, category_names: list[str]) -> dict[str, Any]:
     """把文章「加進」指定分類（保留原本已有的分類，不覆蓋；查無該分類則自動建立）。"""
     new_ids = _resolve_category_ids(category_names)
-    current = requests.get(
-        f"{_API}/posts/{post_id}", headers=_HEADERS, params={"_fields": "categories"}, timeout=30
-    ).json()
-    existing_ids = current.get("categories", [])
-    merged = sorted(set(existing_ids) | set(new_ids))
+    merged = sorted(set(_get_post_category_ids(post_id)) | set(new_ids))
     resp = requests.post(
         f"{_API}/posts/{post_id}", headers=_HEADERS, json={"categories": merged}, timeout=30
     )
     if not resp.ok:
         raise RuntimeError(f"更新文章分類失敗（HTTP {resp.status_code}）：{resp.text[:500]}")
     return {"applied_ids": new_ids, "categories": merged}
+
+
+def remove_post_categories(post_id: int, category_names: list[str]) -> dict[str, Any]:
+    """把文章從指定分類移除（保留其他分類）。"""
+    remove_ids = set(_resolve_category_ids(category_names))
+    remaining = sorted(set(_get_post_category_ids(post_id)) - remove_ids)
+    resp = requests.post(
+        f"{_API}/posts/{post_id}", headers=_HEADERS, json={"categories": remaining}, timeout=30
+    )
+    if not resp.ok:
+        raise RuntimeError(f"更新文章分類失敗（HTTP {resp.status_code}）：{resp.text[:500]}")
+    return {"removed_ids": sorted(remove_ids), "categories": remaining}
+
+
+def move_category(category_name: str, parent_name: str) -> bool:
+    """把分類移到另一個分類底下（依名稱操作，查無則自動建立）。"""
+    endpoint = f"{_API}/categories"
+    cat_id = _resolve_term_id(endpoint, category_name)
+    parent_id = _resolve_term_id(endpoint, parent_name)
+    if not cat_id or not parent_id:
+        return False
+    resp = requests.post(f"{endpoint}/{cat_id}", headers=_HEADERS, json={"parent": parent_id}, timeout=30)
+    return resp.ok
 
 
 def publish_draft(
