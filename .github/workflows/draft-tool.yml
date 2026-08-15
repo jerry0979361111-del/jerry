@@ -17,6 +17,7 @@ on:
           - publish
           - strip_sources
           - replace_text
+          - set_category
       post_id:
         description: "WordPress 文章 ID"
         required: true
@@ -27,6 +28,10 @@ on:
         type: string
       new_text:
         description: "取代後的新文字（僅 replace_text 需要）"
+        required: false
+        type: string
+      category_name:
+        description: "分類名稱（僅 set_category 需要，查無則自動建立）"
         required: false
         type: string
 
@@ -53,4 +58,5 @@ jobs:
           WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
           OLD_TEXT: ${{ inputs.old_text }}
           NEW_TEXT: ${{ inputs.new_text }}
+          CATEGORY_NAME: ${{ inputs.category_name }}
         run: python draft_tool.py "${{ inputs.action }}" "${{ inputs.post_id }}"

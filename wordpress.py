@@ -80,35 +80,46 @@ def list_reference_posts(query: str, count: int) -> list[dict[str, Any]]:
     ]
 
 
+def _resolve_term_id(endpoint: str, name: str) -> int | None:
+    """查詢分類法詞彙（分類／標籤共用），查無則自動建立，回傳 ID。"""
+    name = (name or "").strip()
+    if not name:
+        return None
+    try:
+        found = requests.get(endpoint, headers=_HEADERS, params={"search": name}, timeout=30).json()
+        match = next((t for t in found if t.get("name") == name), None)
+        if match:
+            return match["id"]
+        created = requests.post(endpoint, headers=_HEADERS, json={"name": name}, timeout=30)
+        if created.ok:
+            return created.json()["id"]
+    except (requests.RequestException, ValueError, KeyError):
+        pass
+    return None
+
+
 def _resolve_tag_ids(tag_names: list[str]) -> list[int]:
-    ids: list[int] = []
     endpoint = f"{_API}/tags"
-    for name in tag_names:
-        name = (name or "").strip()
-        if not name:
-            continue
-        try:
-            found = requests.get(
-                endpoint, headers=_HEADERS, params={"search": name}, timeout=30
-            ).json()
-            match = next((t for t in found if t.get("name") == name), None)
-            if match:
-                ids.append(match["id"])
-                continue
-            created = requests.post(
-                endpoint, headers=_HEADERS, json={"name": name}, timeout=30
-            )
-            if created.ok:
-                ids.append(created.json()["id"])
-        except (requests.RequestException, ValueError, KeyError):
-            continue
-    return ids
+    return [tid for tid in (_resolve_term_id(endpoint, name) for name in tag_names) if tid]
+
+
+def set_post_category(post_id: int, category_name: str) -> bool:
+    """把文章加到指定分類（查無該分類則自動建立）。"""
+    cat_id = _resolve_term_id(f"{_API}/categories", category_name)
+    if not cat_id:
+        return False
+    resp = requests.post(
+        f"{_API}/posts/{post_id}", headers=_HEADERS, json={"categories": [cat_id]}, timeout=30
+    )
+    return resp.ok
 
 
 def publish_draft(
-    article: dict[str, Any], featured_media_id: int | None = None
+    article: dict[str, Any],
+    featured_media_id: int | None = None,
+    category_name: str = "",
 ) -> dict[str, Any]:
-    """發佈文章到 WordPress，設定精選圖，並嘗試填入 Rank Math SEO 欄位。"""
+    """發佈文章到 WordPress，設定精選圖／分類，並嘗試填入 Rank Math SEO 欄位。"""
     payload: dict[str, Any] = {
         "title": article["title"],
         "content": article["content_html"],
@@ -123,6 +134,11 @@ def publish_draft(
     tag_ids = _resolve_tag_ids(article.get("tags", []))
     if tag_ids:
         payload["tags"] = tag_ids
+
+    if category_name:
+        cat_id = _resolve_term_id(f"{_API}/categories", category_name)
+        if cat_id:
+            payload["categories"] = [cat_id]
 
     resp = requests.post(f"{_API}/posts", headers=_HEADERS, json=payload, timeout=60)
     if not resp.ok:
