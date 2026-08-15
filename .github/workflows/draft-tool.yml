@@ -17,7 +17,8 @@ on:
           - publish
           - strip_sources
           - replace_text
-          - set_category
+          - add_category
+          - list_categories
       post_id:
         description: "WordPress 文章 ID"
         required: true
@@ -31,7 +32,7 @@ on:
         required: false
         type: string
       category_name:
-        description: "分類名稱（僅 set_category 需要，查無則自動建立）"
+        description: "分類名稱（僅 add_category 需要，查無則自動建立）"
         required: false
         type: string
 
