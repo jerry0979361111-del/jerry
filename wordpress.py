@@ -103,21 +103,44 @@ def _resolve_tag_ids(tag_names: list[str]) -> list[int]:
     return [tid for tid in (_resolve_term_id(endpoint, name) for name in tag_names) if tid]
 
 
-def set_post_category(post_id: int, category_name: str) -> bool:
-    """把文章加到指定分類（查無該分類則自動建立）。"""
-    cat_id = _resolve_term_id(f"{_API}/categories", category_name)
-    if not cat_id:
-        return False
-    resp = requests.post(
-        f"{_API}/posts/{post_id}", headers=_HEADERS, json={"categories": [cat_id]}, timeout=30
+def list_categories() -> list[dict[str, Any]]:
+    """列出網站所有分類（含上下層 parent 關係），用來對照分類導覽結構。"""
+    resp = requests.get(
+        f"{_API}/categories",
+        headers=_HEADERS,
+        params={"per_page": 100, "_fields": "id,name,parent,count"},
+        timeout=30,
     )
-    return resp.ok
+    if not resp.ok:
+        return []
+    return resp.json()
+
+
+def _resolve_category_ids(category_names: list[str]) -> list[int]:
+    endpoint = f"{_API}/categories"
+    return [cid for cid in (_resolve_term_id(endpoint, name) for name in category_names) if cid]
+
+
+def add_post_categories(post_id: int, category_names: list[str]) -> dict[str, Any]:
+    """把文章「加進」指定分類（保留原本已有的分類，不覆蓋；查無該分類則自動建立）。"""
+    new_ids = _resolve_category_ids(category_names)
+    current = requests.get(
+        f"{_API}/posts/{post_id}", headers=_HEADERS, params={"_fields": "categories"}, timeout=30
+    ).json()
+    existing_ids = current.get("categories", [])
+    merged = sorted(set(existing_ids) | set(new_ids))
+    resp = requests.post(
+        f"{_API}/posts/{post_id}", headers=_HEADERS, json={"categories": merged}, timeout=30
+    )
+    if not resp.ok:
+        raise RuntimeError(f"更新文章分類失敗（HTTP {resp.status_code}）：{resp.text[:500]}")
+    return {"applied_ids": new_ids, "categories": merged}
 
 
 def publish_draft(
     article: dict[str, Any],
     featured_media_id: int | None = None,
-    category_name: str = "",
+    category_names: list[str] = (),
 ) -> dict[str, Any]:
     """發佈文章到 WordPress，設定精選圖／分類，並嘗試填入 Rank Math SEO 欄位。"""
     payload: dict[str, Any] = {
@@ -135,10 +158,9 @@ def publish_draft(
     if tag_ids:
         payload["tags"] = tag_ids
 
-    if category_name:
-        cat_id = _resolve_term_id(f"{_API}/categories", category_name)
-        if cat_id:
-            payload["categories"] = [cat_id]
+    category_ids = _resolve_category_ids(list(category_names))
+    if category_ids:
+        payload["categories"] = category_ids
 
     resp = requests.post(f"{_API}/posts", headers=_HEADERS, json=payload, timeout=60)
     if not resp.ok:

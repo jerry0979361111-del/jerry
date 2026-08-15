@@ -42,7 +42,7 @@ def _insert_inline_images(html: str, images: list[dict[str, str]]) -> str:
 
 
 def _publish_article(
-    article: dict[str, Any], image_query: str = "", category_name: str = ""
+    article: dict[str, Any], image_query: str = "", category_names: list[str] = ()
 ) -> dict[str, Any]:
     """共用流程：挑圖、插入內文、發佈到 WordPress 草稿。回傳 {post_id, title, edit_url, ...}。"""
     focus = (article.get("focus_keyword") or "").strip()
@@ -83,7 +83,7 @@ def _publish_article(
     article["content_html"] = _insert_inline_images(article["content_html"], inline_imgs)
 
     featured_id = hero_id
-    post = wordpress.publish_draft(article, featured_media_id=featured_id, category_name=category_name)
+    post = wordpress.publish_draft(article, featured_media_id=featured_id, category_names=category_names)
 
     return {
         "post_id": post["id"],
@@ -130,7 +130,7 @@ def create_weekly_digest_draft() -> dict[str, Any]:
     result = _publish_article(
         article,
         image_query=article.get("image_query", "澳洲 房地產"),
-        category_name="澳洲房產週報",
+        category_names=["澳洲房產週報", "澳洲買家指南"],
     )
     result["source_count"] = len(sources)
     return result

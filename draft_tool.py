@@ -5,8 +5,9 @@
     python draft_tool.py fetch <post_id>          # 印出草稿內容 JSON（供 workflow log 讀取）
     python draft_tool.py publish <post_id>        # 把該篇文章狀態改成 publish
     python draft_tool.py strip_sources <post_id>  # 移除文末重複的「資料來源」彙總清單
-    python draft_tool.py replace_text <post_id>   # 用環境變數 OLD_TEXT/NEW_TEXT 做一次文字取代
-    python draft_tool.py set_category <post_id>   # 用環境變數 CATEGORY_NAME 設定文章分類（查無則自動建立）
+    python draft_tool.py replace_text <post_id>      # 用環境變數 OLD_TEXT/NEW_TEXT 做一次文字取代
+    python draft_tool.py add_category <post_id>      # 用環境變數 CATEGORY_NAME 把文章加進分類（保留原有分類，查無則自動建立）
+    python draft_tool.py list_categories <post_id>   # 印出網站所有分類（含 parent 階層），post_id 可帶任意數字
 """
 import json
 import os
@@ -73,13 +74,17 @@ def replace_text(post_id: int) -> None:
     _print_json({"id": post_id, "occurrences_replaced": occurrences, "new_length": len(new_content)})
 
 
-def set_category(post_id: int) -> None:
-    """把文章加到指定分類（查無該分類則自動建立），分類名稱來自 CATEGORY_NAME 環境變數。"""
+def add_category(post_id: int) -> None:
+    """把文章加進指定分類（保留原有分類，不覆蓋；查無該分類則自動建立），分類名稱來自 CATEGORY_NAME 環境變數。"""
     name = os.environ.get("CATEGORY_NAME", "").strip()
     if not name:
         raise SystemExit("缺少 CATEGORY_NAME 環境變數。")
-    applied = wordpress.set_post_category(post_id, name)
-    _print_json({"id": post_id, "category": name, "applied": applied})
+    result = wordpress.add_post_categories(post_id, [name])
+    _print_json({"id": post_id, "category": name, **result})
+
+
+def list_categories(post_id: int) -> None:  # post_id 不使用，僅為保持統一介面
+    _print_json({"categories": wordpress.list_categories()})
 
 
 _ACTIONS = {
@@ -87,14 +92,15 @@ _ACTIONS = {
     "publish": publish,
     "strip_sources": strip_sources,
     "replace_text": replace_text,
-    "set_category": set_category,
+    "add_category": add_category,
+    "list_categories": list_categories,
 }
 
 
 def main() -> None:
     if len(sys.argv) != 3 or sys.argv[1] not in _ACTIONS:
         raise SystemExit(
-            "用法：python draft_tool.py fetch|publish|strip_sources|replace_text|set_category <post_id>"
+            "用法：python draft_tool.py fetch|publish|strip_sources|replace_text|add_category|list_categories <post_id>"
         )
     action, post_id = sys.argv[1], int(sys.argv[2])
     _ACTIONS[action](post_id)
