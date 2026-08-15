@@ -97,7 +97,7 @@ WordPress 草稿供審核。
 的 `_DIGEST_SYSTEM_PROMPT`。**產出仍是 AI 生成內容，發佈前務必人工審核**（是否誤用他人
 著作、引用是否適當、數字是否正確）。
 
-- 排程：`.github/workflows/weekly-au-property-digest.yml`，預設每週一雪梨時間早上自動執行
+- 排程：`.github/workflows/weekly-au-property-digest.yml`，預設每週一台灣時間早上 9:00 自動執行
   （可到 workflow 檔案調整 cron 時間），也可到 Actions 分頁手動「Run workflow」測試
 - 本機測試：`python run_weekly_digest.py`
 - 與現有文章產生器共用同一組 `.env` / GitHub Secrets（`ANTHROPIC_API_KEY`、`WP_*`）
