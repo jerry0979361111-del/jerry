@@ -42,7 +42,10 @@ def _insert_inline_images(html: str, images: list[dict[str, str]]) -> str:
 
 
 def _publish_article(
-    article: dict[str, Any], image_query: str = "", category_names: list[str] = ()
+    article: dict[str, Any],
+    image_query: str = "",
+    category_names: list[str] = (),
+    exclude_media_ids: frozenset[int] = frozenset(),
 ) -> dict[str, Any]:
     """共用流程：挑圖、插入內文、發佈到 WordPress 草稿。回傳 {post_id, title, edit_url, ...}。"""
     focus = (article.get("focus_keyword") or "").strip()
@@ -55,6 +58,12 @@ def _publish_article(
     if len(candidates) < 8:
         seen = {c["id"] for c in candidates}
         candidates += [m for m in wordpress.list_media(per_page=40) if m["id"] not in seen]
+
+    if exclude_media_ids:
+        # 排除最近幾篇用過的首圖，避免每次都選到同一張；若排除後候選圖太少就不排除
+        filtered = [c for c in candidates if c["id"] not in exclude_media_ids]
+        if filtered:
+            candidates = filtered
 
     picks = generator.choose_images(article["title"], candidates)
     by_id = {c["id"]: c for c in candidates}
@@ -127,10 +136,14 @@ def create_weekly_digest_draft() -> dict[str, Any]:
     # 這裡只取數量做診斷用，避免文末重複列出一次。
     sources = article.pop("sources", None) or []
 
+    # 排除最近幾週用過的首圖，讓每篇週報的首圖都不一樣
+    recent_hero_ids = wordpress.list_category_featured_media("澳洲房產週報", count=6)
+
     result = _publish_article(
         article,
         image_query=article.get("image_query", "澳洲 房地產"),
         category_names=["澳洲房產週報"],
+        exclude_media_ids=frozenset(recent_hero_ids),
     )
     result["source_count"] = len(sources)
     return result
