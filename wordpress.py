@@ -121,6 +121,31 @@ def _resolve_category_ids(category_names: list[str]) -> list[int]:
     return [cid for cid in (_resolve_term_id(endpoint, name) for name in category_names) if cid]
 
 
+def list_category_featured_media(category_name: str, count: int = 6) -> list[int]:
+    """列出某分類最近 N 篇文章使用過的精選圖 media id（用來避免首圖每次重複）。"""
+    cat_id = _resolve_term_id(f"{_API}/categories", category_name)
+    if not cat_id:
+        return []
+    try:
+        resp = requests.get(
+            f"{_API}/posts",
+            headers=_HEADERS,
+            params={
+                "categories": cat_id,
+                "per_page": count,
+                "orderby": "date",
+                "order": "desc",
+                "_fields": "featured_media",
+            },
+            timeout=30,
+        )
+        if not resp.ok:
+            return []
+        return [p["featured_media"] for p in resp.json() if p.get("featured_media")]
+    except (requests.RequestException, ValueError, KeyError):
+        return []
+
+
 def _get_post_category_ids(post_id: int) -> list[int]:
     resp = requests.get(
         f"{_API}/posts/{post_id}", headers=_HEADERS, params={"_fields": "categories"}, timeout=30
