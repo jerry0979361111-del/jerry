@@ -10,6 +10,8 @@
     python draft_tool.py remove_category <post_id>   # 用環境變數 CATEGORY_NAME 把文章從該分類移除（保留其他分類）
     python draft_tool.py move_category <post_id>     # 用環境變數 CATEGORY_NAME/PARENT_CATEGORY_NAME 把分類移到另一個分類底下，post_id 可帶任意數字
     python draft_tool.py list_categories <post_id>   # 印出網站所有分類（含 parent 階層），post_id 可帶任意數字
+    python draft_tool.py set_title <post_id>         # 用環境變數 TITLE 更新文章標題
+    python draft_tool.py fix_hero_image <post_id>    # 把精選圖＋內文第一張插圖換成一張最近沒用過的圖
 """
 import json
 import os
@@ -108,6 +110,59 @@ def list_categories(post_id: int) -> None:  # post_id 不使用，僅為保持�
     _print_json({"categories": wordpress.list_categories()})
 
 
+def set_title(post_id: int) -> None:
+    """更新文章標題，新標題來自 TITLE 環境變數。"""
+    title = os.environ.get("TITLE", "").strip()
+    if not title:
+        raise SystemExit("缺少 TITLE 環境變數。")
+    post = wordpress.update_post_title(post_id, title)
+    _print_json({"id": post_id, "title": (post.get("title") or {}).get("rendered", title)})
+
+
+def fix_hero_image(post_id: int) -> None:
+    """把文章的精選圖＋內文第一張插圖，換成一張「澳洲房產週報」分類最近沒用過的圖。"""
+    post = wordpress.get_post(post_id)
+    content = (post.get("content") or {}).get("rendered", "")
+    current_hero = post.get("featured_media")
+
+    exclude_ids = set(wordpress.list_category_featured_media("澳洲房產週報", count=8))
+    if current_hero:
+        exclude_ids.add(current_hero)
+
+    candidates = wordpress.list_media(per_page=40, search="澳洲 房地產")
+    if len(candidates) < 8:
+        seen = {c["id"] for c in candidates}
+        candidates += [m for m in wordpress.list_media(per_page=40) if m["id"] not in seen]
+
+    fresh = [c for c in candidates if c["id"] not in exclude_ids and c.get("source_url")]
+    if not fresh:
+        raise SystemExit("媒體庫裡找不到還沒用過的圖可以替換。")
+    new_media = fresh[0]
+
+    wordpress.set_featured_media(post_id, new_media["id"])
+
+    new_content, count = re.subn(
+        r"<figure><img[^>]*/></figure>",
+        '<figure><img decoding="async" src="{src}" alt="{alt}" style="max-width:100%;height:auto"/></figure>'.format(
+            src=new_media["source_url"], alt=new_media.get("alt", "")
+        ),
+        content,
+        count=1,
+    )
+    if count:
+        wordpress.update_post_content(post_id, new_content)
+
+    _print_json(
+        {
+            "id": post_id,
+            "old_featured_media": current_hero,
+            "new_featured_media": new_media["id"],
+            "new_image_url": new_media["source_url"],
+            "content_updated": bool(count),
+        }
+    )
+
+
 _ACTIONS = {
     "fetch": fetch,
     "publish": publish,
@@ -117,6 +172,8 @@ _ACTIONS = {
     "remove_category": remove_category,
     "move_category": move_category,
     "list_categories": list_categories,
+    "set_title": set_title,
+    "fix_hero_image": fix_hero_image,
 }
 
 
@@ -124,7 +181,8 @@ def main() -> None:
     if len(sys.argv) != 3 or sys.argv[1] not in _ACTIONS:
         raise SystemExit(
             "用法：python draft_tool.py "
-            "fetch|publish|strip_sources|replace_text|add_category|remove_category|move_category|list_categories "
+            "fetch|publish|strip_sources|replace_text|add_category|remove_category|move_category|"
+            "list_categories|set_title|fix_hero_image "
             "<post_id>"
         )
     action, post_id = sys.argv[1], int(sys.argv[2])

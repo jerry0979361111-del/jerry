@@ -268,6 +268,26 @@ def set_post_status(post_id: int, status: str) -> dict[str, Any]:
     return resp.json()
 
 
+def update_post_title(post_id: int, title: str) -> dict[str, Any]:
+    """更新文章標題。"""
+    resp = requests.post(
+        f"{_API}/posts/{post_id}", headers=_HEADERS, json={"title": title}, timeout=30
+    )
+    if not resp.ok:
+        raise RuntimeError(f"更新文章標題失敗（HTTP {resp.status_code}）：{resp.text[:500]}")
+    return resp.json()
+
+
+def set_featured_media(post_id: int, media_id: int) -> dict[str, Any]:
+    """更新文章精選圖。"""
+    resp = requests.post(
+        f"{_API}/posts/{post_id}", headers=_HEADERS, json={"featured_media": media_id}, timeout=30
+    )
+    if not resp.ok:
+        raise RuntimeError(f"更新精選圖失敗（HTTP {resp.status_code}）：{resp.text[:500]}")
+    return resp.json()
+
+
 def update_post_content(post_id: int, content_html: str) -> dict[str, Any]:
     """覆寫文章內文（用於修正既有草稿內容）。"""
     resp = requests.post(
