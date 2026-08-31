@@ -268,6 +268,14 @@ def set_post_status(post_id: int, status: str) -> dict[str, Any]:
     return resp.json()
 
 
+def trash_post(post_id: int) -> dict[str, Any]:
+    """把文章移到回收桶（不加 force，可從 WordPress 後台復原，不是永久刪除）。"""
+    resp = requests.delete(f"{_API}/posts/{post_id}", headers=_HEADERS, timeout=30)
+    if not resp.ok:
+        raise RuntimeError(f"刪除文章失敗（HTTP {resp.status_code}）：{resp.text[:500]}")
+    return resp.json()
+
+
 def update_post_title(post_id: int, title: str) -> dict[str, Any]:
     """更新文章標題。"""
     resp = requests.post(
