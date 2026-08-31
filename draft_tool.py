@@ -12,6 +12,7 @@
     python draft_tool.py list_categories <post_id>   # 印出網站所有分類（含 parent 階層），post_id 可帶任意數字
     python draft_tool.py set_title <post_id>         # 用環境變數 TITLE 更新文章標題
     python draft_tool.py fix_hero_image <post_id>    # 把精選圖＋內文第一張插圖換成一張最近沒用過的圖
+    python draft_tool.py trash_post <post_id>        # 把文章移到回收桶（可從後台復原，非永久刪除）
 """
 import json
 import os
@@ -163,6 +164,12 @@ def fix_hero_image(post_id: int) -> None:
     )
 
 
+def trash_post(post_id: int) -> None:
+    """把文章移到回收桶（可從 WordPress 後台復原，非永久刪除）。"""
+    result = wordpress.trash_post(post_id)
+    _print_json({"id": post_id, "status": result.get("status", ""), "trashed": True})
+
+
 _ACTIONS = {
     "fetch": fetch,
     "publish": publish,
@@ -174,6 +181,7 @@ _ACTIONS = {
     "list_categories": list_categories,
     "set_title": set_title,
     "fix_hero_image": fix_hero_image,
+    "trash_post": trash_post,
 }
 
 
@@ -182,7 +190,7 @@ def main() -> None:
         raise SystemExit(
             "用法：python draft_tool.py "
             "fetch|publish|strip_sources|replace_text|add_category|remove_category|move_category|"
-            "list_categories|set_title|fix_hero_image "
+            "list_categories|set_title|fix_hero_image|trash_post "
             "<post_id>"
         )
     action, post_id = sys.argv[1], int(sys.argv[2])

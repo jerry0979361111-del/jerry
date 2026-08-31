@@ -23,6 +23,7 @@ on:
           - list_categories
           - set_title
           - fix_hero_image
+          - trash_post
       post_id:
         description: "WordPress 文章 ID"
         required: true
