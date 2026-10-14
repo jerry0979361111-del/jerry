@@ -1,10 +1,10 @@
 name: 澳洲房產週報（每週自動生成並上架到 WordPress 草稿）
 
-# 每週一台灣時間早上 9:00 自動執行。
-# 也可以到 Actions 分頁手動點「Run workflow」立即測試。
+# 自動每週排程目前暫停中（2026-10-14 使用者要求暫停文章生成與發佈）。
+# 要恢復時，把下面 schedule 區塊的註解拿掉即可；也可以隨時到 Actions 分頁手動點「Run workflow」。
 on:
-  schedule:
-    - cron: "0 1 * * 1" # UTC 週一 01:00 ＝ 台灣（UTC+8）週一 09:00
+  # schedule:
+  #   - cron: "0 1 * * 1" # UTC 週一 01:00 ＝ 台灣（UTC+8）週一 09:00
   workflow_dispatch: {}
 
 jobs:
