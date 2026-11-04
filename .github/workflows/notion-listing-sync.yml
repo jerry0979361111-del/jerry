@@ -1,0 +1,34 @@
+name: 建案資料庫同步到官網（Notion → WordPress 草稿）
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # UTC 00:00 ＝ 台灣（UTC+8）每天 08:00
+  workflow_dispatch: {}
+
+jobs:
+  sync-listings:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 取得程式碼
+        uses: actions/checkout@v4
+
+      - name: 安裝 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安裝套件
+        run: pip install -r requirements.txt
+
+      - name: 檢查 Notion 新建案並同步到 WordPress 草稿
+        env:
+          # 下列值來自 repo 的 Settings → Secrets and variables → Actions
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+          WP_USERNAME: ${{ secrets.WP_USERNAME }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          # 選填：沒設定就用程式預設值（目前使用的建案資料庫 ID）
+          NOTION_DATABASE_ID: ${{ vars.NOTION_DATABASE_ID }}
+          WP_POST_STATUS: ${{ vars.WP_POST_STATUS }}
+        run: python notion_sync.py

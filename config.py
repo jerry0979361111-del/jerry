@@ -36,6 +36,10 @@ WP_USERNAME = _require("WP_USERNAME")
 WP_APP_PASSWORD = _require("WP_APP_PASSWORD").replace(" ", "")
 WP_POST_STATUS = _optional("WP_POST_STATUS", "draft")
 
+# ── Notion（建案資料庫同步用，非必填：沒設定時其他功能不受影響）────
+NOTION_API_KEY = _optional("NOTION_API_KEY", "")
+NOTION_DATABASE_ID = _optional("NOTION_DATABASE_ID", "13280ab9d400417ba12125a3d9c2d0d7")
+
 # ── 文章 ────────────────────────────────────────────────
 ARTICLE_LANGUAGE = _optional("ARTICLE_LANGUAGE", "繁體中文")
 
