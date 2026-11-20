@@ -102,6 +102,54 @@ WordPress 草稿供審核。
 - 本機測試：`python run_weekly_digest.py`
 - 與現有文章產生器共用同一組 `.env` / GitHub Secrets（`ANTHROPIC_API_KEY`、`WP_*`）
 
+## 建案資料庫自動上架（Notion → 官網）
+
+`notion_sync.py`：每天自動檢查 Notion「澳洲房地產建案資料庫」，找出符合下列條件、
+但**還沒上架過**的建案，自動發佈成 WordPress 文章草稿：
+
+- ✅ 「網站上架」已勾選
+- ✅ 「禁止公開」未勾選
+- ✅ 「已同步官網」未勾選（這個欄位由程式自動打勾，標記「已經處理過」，避免同一個建案重複發文）
+
+發佈成功後，程式會自動在 Notion 該筆資料把「已同步官網」打勾。之後即使 workflow
+每天跑，也只會處理新增或還沒打勾的建案，**不會重複發布**。文章內容取自 Notion
+的「網站簡介」「價格帶」「網站起價」「地址」「開發商」等屬性，自動整理成表格＋簡介。
+
+### 一次性設定
+
+1. **建立 Notion 內部整合**：到 <https://www.notion.so/my-integrations> → **New integration**
+   → 類型選「Internal」→ 取得 **Internal Integration Secret**（長得像 `ntn_xxxx...`）
+2. **把資料庫分享給這個整合**：打開「澳洲房地產建案資料庫」→ 右上角 `···` 選單 →
+   **Connections** → 搜尋剛建立的整合名稱 → 加入連線（沒有這一步會查不到任何資料）
+3. 到 GitHub repo → **Settings → Secrets and variables → Actions → New repository secret**，
+   新增：
+
+   | 名稱 | 值 |
+   |---|---|
+   | `NOTION_API_KEY` | 剛取得的 Internal Integration Secret |
+
+   （`WP_BASE_URL`、`WP_USERNAME`、`WP_APP_PASSWORD`、`ANTHROPIC_API_KEY` 沿用現有文章產生器的設定即可，不用重複建立）
+
+4. （選填）如果之後資料庫換了別的 ID，可在 **Variables** 分頁新增 `NOTION_DATABASE_ID` 覆寫；
+   沒設定就用目前的建案資料庫 ID。
+
+### 排程 / 手動執行
+
+- 排程：`.github/workflows/notion-listing-sync.yml`，預設每天台灣時間早上 8:00 自動執行
+  （可到 workflow 檔案調整 cron 時間），也可到 Actions 分頁手動「Run workflow」立即檢查一次
+- 本機測試：`python notion_sync.py`
+- 發佈狀態同樣受 `WP_POST_STATUS` 控制（預設 `draft`草稿，**建議人工審核後再正式發佈**，
+  尤其是價格、戶數等數字務必跟 Notion 原始資料再核對一次）
+
+### 常見問題
+
+- **執行後說「查詢 Notion 資料庫失敗」**：通常是忘了把資料庫分享給整合（上面步驟 2），
+  或是 `NOTION_API_KEY` 貼錯。
+- **想手動強制重新發佈某個建案**：到 Notion 該筆資料把「已同步官網」取消勾選，下次排程
+  或手動執行就會重新發一篇。
+- **新建案資料還沒整理完就被發出去了**：發佈條件包含「網站上架」勾選，平常整理資料時
+  不要先勾這個欄位，整理確認完成後才勾，程式隔天就會自動抓到並發佈。
+
 ## 給員工用的網頁版（不需 GitHub 帳號）
 
 `app.py` 是一個網頁服務：員工打開網址、輸入主題與**存取密碼**、按送出，就會生成文章並存到 WordPress 草稿。適合團隊使用——員工完全不用碰你的 GitHub。
